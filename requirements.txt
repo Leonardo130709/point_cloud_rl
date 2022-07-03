@@ -1,0 +1,10 @@
+numpy
+matplotlib
+torch
+torchvision
+tensorboard
+dm_control
+ruamel.yaml
+fvcore
+iopath
+pytorch3d
