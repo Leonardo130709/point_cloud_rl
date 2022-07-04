@@ -61,7 +61,7 @@ class Config(BaseConfig):
     dual_lr: float = 3e-4
     weight_decay: float = 0.
     critic_tau: float = .01
-    encoder_tau: float = .05
+    encoder_tau: float = .01
     max_grad: float = 40.
 
     total_steps: int = 4*10**6

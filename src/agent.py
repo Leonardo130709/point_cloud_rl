@@ -49,9 +49,9 @@ class RSAC(nn.Module):
 
         self.optim.zero_grad()
         loss.backward()
-        # clip_grad_norm_(self.actor.parameters(), self._c.max_grad)
-        # clip_grad_norm_(self.critic.parameters(), self._c.max_grad)
-        # clip_grad_norm_(self.encoder.parameters(), self._c.max_grad)
+        clip_grad_norm_(self.actor.parameters(), self._c.max_grad)
+        clip_grad_norm_(self.critic.parameters(), self._c.max_grad)
+        clip_grad_norm_(self.encoder.parameters(), self._c.max_grad)
         self.optim.step()
 
         if self._c.debug:
