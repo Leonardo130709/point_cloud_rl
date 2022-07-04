@@ -85,6 +85,7 @@ class FrameStack(Wrapper):
         )
 
 
+#TODO: redo and make understandable
 class PointCloudWrapper(Wrapper):
     """Creates point cloud from depth map using MuJoCo engine."""
     def __init__(self,
@@ -139,24 +140,21 @@ class PointCloudWrapper(Wrapper):
 
     def _to_fixed_number(self, pc):
         n = len(pc)
-        if n < self.pn_number:
-            return np.pad(pc, ((0, self.pn_number - n), (0, 0)), mode='edge')
+        if n == 0:
+            pc = np.zeros((1, 3))
+        elif n <= self.pn_number:
+            pc = np.pad(pc, ((0, self.pn_number - n), (0, 0)), mode='edge')
         else:
-            return np.random.permutation(pc)[:self.pn_number]
+            pc = np.random.permutation(pc)[:self.pn_number]
+        return pc
 
     def _get_point_cloud(self, depth_map):
         inv_mat = self.inverse_matrix()
-        dot_product = lambda x, y: np.einsum('ij, jhw->hwi', x, y)
-
-
         width = self.render_kwargs['width']
         height = self.render_kwargs['height']
-        point_cloud = dot_product(inv_mat)
         grid = 1. + np.mgrid[:height, :width]
-        grid = np.stack((grid, depth_map[np.newaxis]), 0)
-
-        residual_sum = dot_product(inv_mat[:, -1:], depth_map[np.newaxis])
-        return residual_sum
+        grid = np.concatenate((grid, depth_map[np.newaxis]), axis=0)
+        return np.einsum('ij, jhw -> hwi', inv_mat, grid)
 
     def _mask(self, point_cloud):
         return point_cloud[..., 2] < 10.

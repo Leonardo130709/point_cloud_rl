@@ -1,8 +1,8 @@
 import pickle
 import pathlib
 
-import numpy as np
 import torch
+import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -10,14 +10,12 @@ from .config import Config
 from .agent import RSAC
 from . import wrappers, utils
 
-torch.autograd.set_detect_anomaly(True)
-
 
 class RLAlg:
     def __init__(self, config):
         utils.set_seed(config.seed)
         self.config = config
-        self.env = self.make_env()
+        self.env = self.make_env(random=config.seed)
         self.task_path = pathlib.Path(config.logdir)
         self.callback = SummaryWriter(log_dir=self.task_path)
         self.agent = RSAC(self.env, config, self.callback)
@@ -28,21 +26,26 @@ class RLAlg:
         obs = None
         while self.interactions_count < self.config.total_steps:
             if obs is None:
-                obs = self.env.reset()
+                obs = self.env.reset().observation
 
             action = self.policy(obs, training=True)
-            next_obs, reward, done, _ = self.env.step(action)
+            timestep = self.env.step(action)
 
             self.interactions_count += self.config.action_repeat
 
             transition = utils.Transition(
                 observation=obs,
                 action=action,
-                reward=reward,
-                done_flag=done,
-                next_observation=next_obs
+                reward=np.array(timestep.reward, dtype=np.float32)[np.newaxis],
+                done_flag=np.array(timestep.last(), dtype=bool)[np.newaxis],
+                next_observation=timestep.observation
             )
             self.buffer.add(transition)
+
+            if timestep.last():
+                obs = None
+            else:
+                obs = timestep.observation
 
             dl = DataLoader(
                 self.buffer.sample(self.config.spi),
@@ -50,10 +53,12 @@ class RLAlg:
             )
 
             for transitions in dl:
-                self.agent.step(*transitions)
+                observations, actions, rewards, dones, next_observations =\
+                    map(lambda t: t.to(self.agent.device), transitions)
+                self.agent.step(observations, actions, rewards, dones, next_observations)
 
             if self.interactions_count % self.config.eval_freq == 0:
-                scores = [utils.evaluate(self.env, self.policy) for _ in range(10)]
+                scores = [utils.evaluate(self.make_env(), self.policy) for _ in range(10)]
                 self.callback.add_scalar('test/eval_reward', np.mean(scores),
                                          self.interactions_count)
                 self.callback.add_scalar('test/eval_std', np.std(scores), self.interactions_count)
@@ -83,7 +88,7 @@ class RLAlg:
                 map_location=torch.device(config.device if torch.cuda.is_available() else 'cpu')
             )
             with torch.no_grad():
-                alg.agent.load_state_dict(chkp['params'], strict=False)
+                alg.agent.load_state_dict(chkp['params'])
                 alg.agent.optim.load_state_dict(chkp['optim'])
             alg.interactions_count = chkp['interactions']
 
@@ -92,19 +97,18 @@ class RLAlg:
                 alg.buffer = pickle.load(b)
         return alg
 
-    def make_env(self):
-        env = utils.make_env(self.config.task, random=self.config.seed)
+    def make_env(self, **task_kwargs):
+        env = utils.make_env(self.config.task, **task_kwargs)
         env = wrappers.PointCloudWrapper(
             env,
             pn_number=self.config.pn_number,
             downsample=self.config.downsample,
-            apply_segmentation=True
         )
-        env = wrappers.ActionRepeat(env, self.config.action_repeat)
-        env = wrappers.FrameStack(env, self.config.frames_stack, stack=True)
+        env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=self.config.discount)
+        env = wrappers.FrameStack(env, self.config.frames_stack)
         return env
 
     def policy(self, obs, training):
         obs = torch.from_numpy(obs[None]).to(self.agent.device)
         action = self.agent.policy(obs, training)
-        return action.detach().cpu().numpy()
+        return action.detach().cpu().numpy().flatten()

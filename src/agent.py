@@ -37,25 +37,21 @@ class RSAC(nn.Module):
         alpha = torch.maximum(self._log_alpha, torch.full_like(self._log_alpha, -18.))
         alpha = F.softplus(alpha) + 1e-8
 
-        policy = self.actor(states.detach())
-        sampled_actions = policy.rsample()
-        sampled_log_probs = policy.log_prob(sampled_actions)
-
         critic_loss = self._policy_learning(
-            states, actions, rewards, dones, next_states,
-            sampled_actions, sampled_log_probs, alpha
+            states, actions, rewards, dones, next_states, alpha
         )
 
         auxiliary_loss = self._auxiliary_loss(observations, next_states) # TODO: update method
 
         actor_loss, dual_loss = self._policy_improvement(
-            states.detach(), sampled_actions, sampled_log_probs, alpha)
+            states.detach(), alpha)
         loss = critic_loss + auxiliary_loss + actor_loss + dual_loss
 
         self.optim.zero_grad()
         loss.backward()
-        clip_grad_norm_(self._rl_params, self._c.max_grad)
-        clip_grad_norm_(self._ae_params, self._c.max_grad)
+        # clip_grad_norm_(self.actor.parameters(), self._c.max_grad)
+        # clip_grad_norm_(self.critic.parameters(), self._c.max_grad)
+        # clip_grad_norm_(self.encoder.parameters(), self._c.max_grad)
         self.optim.step()
 
         if self._c.debug:
@@ -78,18 +74,21 @@ class RSAC(nn.Module):
             rewards,
             dones,
             next_states,
-            next_actions,
-            next_log_prob,
             alpha
     ):
         del dones  # not used for continuous control tasks
         with torch.no_grad():
+            policy = self.actor(next_states)
+            next_actions = policy.sample()
+
             q_values = self._target_critic(
                 next_states,
                 next_actions
             ).min(-1, keepdim=True).values
 
-            soft_values = q_values - alpha * next_log_prob.unsqueeze(-1)
+            next_log_probs = policy.log_prob(next_actions).unsqueeze(-1)
+
+            soft_values = q_values - alpha * next_log_probs
             target_q_values = rewards + self._c.discount*soft_values
 
         q_values = self.critic(states, actions)
@@ -105,10 +104,12 @@ class RSAC(nn.Module):
     def _policy_improvement(
             self,
             states,
-            actions,
-            log_probs,
             alpha
     ):
+        policy = self.actor(states)
+        actions = policy.rsample()
+        log_probs = policy.log_prob(actions)
+
         self.critic.requires_grad_(False)
         q_values = self.critic(
             states,
@@ -136,13 +137,13 @@ class RSAC(nn.Module):
                 loss = chamfer_distance(obs.flatten(0, 2), obs_pred.flatten(0, 2))[0]
             else:
                 loss = (obs_pred - obs).pow(2)
-            return loss.mean()
+            return self._c.reconstruction_coef * loss.mean()
         else:
             raise NotImplementedError
 
     def _build(self):
         emb = self._c.obs_emb_dim
-        act_dim = self.action_spec().shape[0]
+        act_dim = self.action_spec.shape[0]
         self.device = torch.device(self._c.device if torch.cuda.is_available() else 'cpu')
 
         # RL
@@ -152,18 +153,20 @@ class RSAC(nn.Module):
 
         # Encoder+decoder
         frames_stack, pn_number, in_channels = self.observation_spec.shape
-        self.encoder = models.PointCloudEncoder(in_channels,
-                                                num_frames=frames_stack,
-                                                out_features=emb,
-                                                layers=self._c.pn_layers,
-                                                features_from_layers=()
-                                                )
-        self.decoder = models.PointCloudDecoder(emb,
-                                                layers=self._c.pn_layers,
-                                                pn_number=self._c.pn_number,
-                                                num_frames=frames_stack,
-                                                out_channels=in_channels
-                                                )
+        self.encoder = models.PointCloudEncoder(
+            in_channels,
+            num_frames=frames_stack,
+            out_features=emb,
+            layers=self._c.pn_layers,
+            features_from_layers=()
+        )
+        self.decoder = models.PointCloudDecoder(
+            emb,
+            layers=self._c.pn_layers,
+            pn_number=self._c.pn_number,
+            num_frames=frames_stack,
+            out_channels=in_channels
+        )
 
         init_log_alpha = torch.log(torch.tensor(self._c.init_temperature).exp() - 1.)
         self._log_alpha = nn.Parameter(init_log_alpha)

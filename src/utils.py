@@ -41,40 +41,16 @@ def set_seed(seed):
     random.seed(seed)
 
 
-def simulate(env, policy, training):
-    obs = env.reset()
-    done = False
-    observations, actions, rewards, dones, log_probs = [[] for _ in range(5)]
-    while not done:
-        action, log_prob = policy(obs, training)
-        new_obs, reward, done = env.step(action)
-        observations.append(obs)
-        actions.append(action)
-        dones.append([done])
-        rewards.append(np.float32([reward]))
-        log_probs.append(log_prob)
-        obs = new_obs
-
-    tr = dict(
-        observations=observations,
-        actions=actions,
-        rewards=rewards,
-        done_flags=dones,
-        log_probs=log_probs,
-    )
-    for k, v in tr.items():
-        tr[k] = np.stack(v)
-    return tr
-
-
 def evaluate(env, policy):
-    obs = env.reset()
+    obs = env.reset().observation
     done = False
     total_reward = 0
     while not done:
         action = policy(obs, training=False)
-        obs, reward, done, _ = env.step(action)
-        total_reward += reward
+        timestep = env.step(action)
+        obs = timestep.observation
+        done = timestep.last()
+        total_reward += timestep.reward
     return total_reward
 
 
@@ -116,7 +92,6 @@ class TruncatedTanhTransform(td.transforms.TanhTransform):
         return y.atanh()
 
 
-@torch.no_grad()
 def soft_update(target, online, rho):
     for pt, po in zip(target.parameters(), online.parameters()):
         pt.data.copy_((1. - rho) * pt.data + rho * po.detach())

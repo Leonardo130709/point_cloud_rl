@@ -31,22 +31,28 @@ class BaseConfig(ABC):
 
 @dataclasses.dataclass
 class Config(BaseConfig):
+    #TODO: add docstring
+
     # algo
     discount: float = .99
     action_repeat: int = 2
     frames_stack: int = 3
-    init_temperature: float = .1
+    init_temperature: float = 1e-2
     target_ent_per_dim: float = -1.
 
     # architecture
     critic_layers: tuple = (256, 256)
     actor_layers: tuple = (256, 256)
-    obs_emb_dim: int = 50
+    obs_emb_dim: int = 64
 
     # PointNet
     pn_number: int = 100
-    pn_layers: tuple = (32, 64, 128)
+    pn_layers: tuple = (64, 128, 256)
     downsample: int = 3
+
+    #aux_losses
+    reconstruction_coef: float = 10.
+    constrastive_coef: float = 2.
 
     # train
     actor_lr: float = 3e-4
@@ -61,14 +67,18 @@ class Config(BaseConfig):
     total_steps: int = 4*10**6
     spi: int = 128
     batch_size: int = 128
-    eval_freq: int = 20000
+    eval_freq: int = 10000
     buffer_size: int = 10**6
 
     # task
     task: str = 'walker_stand'
     seed: int = 0
     aux_loss: str = 'None'
-    logdir: str = 'logdir'
+    logdir: str = 'logdir/tmp'
     device: str = 'cuda'
     observe: str = 'point_cloud'
     debug: bool = True
+
+    def __post_init__(self):
+        super().__post_init__()
+        assert self.spi >= self.batch_size
