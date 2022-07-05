@@ -183,7 +183,7 @@ class PointCloudWrapperV2(Wrapper):
         pcd = self._point_cloud_from_depth(depth)
         mask = self._mask(pcd)
         pcd = pcd[mask][::self.stride]
-        return self._to_fixed_number(pcd)
+        return self._to_fixed_number(pcd).astype(np.float32)
 
     def _point_cloud_from_depth(self, depth):
         f_inv, cx, cy = self._inverse_intrinsic_matrix_params()
@@ -192,9 +192,8 @@ class PointCloudWrapperV2(Wrapper):
         y = (y - cy) * f_inv
 
         pc = np.stack((x, y, depth), axis=-1)
+        return pc
         # rot_mat = self.env.physics.data.cam_xmat[self.render_kwargs['camera_id']].reshape(3, 3)
-        rot_mat = np.identity(3)  # TODO: fix
-        return pc @ rot_mat
         # return np.einsum('ij, hwi->hwj', rot_mat, pc).reshape(-1, 3)
 
     def _to_fixed_number(self, pc):
