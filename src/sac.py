@@ -1,3 +1,4 @@
+import time
 import pickle
 import pathlib
 
@@ -23,6 +24,7 @@ class RLAlg:
         self.interactions_count = 0
 
     def learn(self):
+        dur = time.time()
         obs = None
         while self.interactions_count < self.config.total_steps:
             if obs is None:
@@ -65,6 +67,12 @@ class RLAlg:
 
                 self.save()
 
+        dur = time.time() - dur
+        self.callback.add_hparams(
+            vars(self.config),
+            dict(duration=dur, score=np.mean(scores))
+        )
+
     def save(self):
         self.config.save(self.task_path / 'config.yml')
         torch.save({
@@ -99,10 +107,16 @@ class RLAlg:
 
     def make_env(self, **task_kwargs):
         env = utils.make_env(self.config.task, **task_kwargs)
-        env = wrappers.PointCloudWrapper(
+        # env = wrappers.PointCloudWrapper(
+        #     env,
+        #     pn_number=self.config.pn_number,
+        #     downsample=self.config.downsample,
+        #     render_kwargs=dict(camera_id=0, height=240, width=320)
+        # )
+        env = wrappers.PointCloudWrapperV2(
             env,
             pn_number=self.config.pn_number,
-            downsample=self.config.downsample,
+            stride=self.config.downsample
         )
         env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=self.config.discount)
         env = wrappers.FrameStack(env, self.config.frames_stack)

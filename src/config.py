@@ -37,7 +37,7 @@ class Config(BaseConfig):
     discount: float = .99
     action_repeat: int = 2
     frames_stack: int = 3
-    init_temperature: float = 1e-2
+    init_temperature: float = .1
     target_ent_per_dim: float = -1.
 
     # architecture
@@ -46,9 +46,9 @@ class Config(BaseConfig):
     obs_emb_dim: int = 64
 
     # PointNet
-    pn_number: int = 100
-    pn_layers: tuple = (64, 128, 256)
-    downsample: int = 3
+    pn_number: int = 300
+    pn_layers: tuple = (64, 64, 64)
+    downsample: int = 10
 
     #aux_losses
     reconstruction_coef: float = 10.
@@ -71,8 +71,8 @@ class Config(BaseConfig):
     buffer_size: int = 10**6
 
     # task
-    task: str = 'walker_stand'
     seed: int = 0
+    task: str = 'walker_stand'
     aux_loss: str = 'None'
     logdir: str = 'logdir/tmp'
     device: str = 'cuda'
