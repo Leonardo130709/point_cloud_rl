@@ -46,7 +46,7 @@ class Config(BaseConfig):
     obs_emb_dim: int = 50
 
     # PointNet
-    pn_number: int = 300
+    pn_number: int = 100
     pn_layers: tuple = (64, 128, 256)
     downsample: int = 5
 

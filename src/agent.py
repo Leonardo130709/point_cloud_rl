@@ -182,7 +182,7 @@ class RSAC(nn.Module):
                 'lr': self._c.ae_lr,
                 'weight_decay': self._c.weight_decay
              },
-            {'params': [self._log_alpha], 'lr': self._c.dual_lr, 'betas': (.5, .999)}
+            {'params': [self._log_alpha], 'lr': self._c.dual_lr, 'betas': (0.5, .999)}
         ])
 
         self._target_entropy = self._c.target_ent_per_dim * act_dim
