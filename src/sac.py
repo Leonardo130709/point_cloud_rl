@@ -116,7 +116,8 @@ class RLAlg:
         env = wrappers.PointCloudWrapperV2(
             env,
             pn_number=self.config.pn_number,
-            stride=self.config.downsample
+            stride=self.config.downsample,
+            render_kwargs=dict(camera_id=0, height=84, width=84)
         )
         env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=self.config.discount)
         env = wrappers.FrameStack(env, self.config.frames_stack)

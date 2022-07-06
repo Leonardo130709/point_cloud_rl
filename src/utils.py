@@ -80,12 +80,12 @@ class ReplayBuffer(Dataset):
         return self._size
 
     def sample(self, size):
-        idx = np.random.randint(self._size, size=min(size, self._size))
+        idx = np.random.randint(self._size, size=min(size, 64*self._size))
         return Subset(self._data, idx)
 
 
 class TruncatedTanhTransform(td.transforms.TanhTransform):
-    _lim = .999
+    _lim = .9999
 
     def _inverse(self, y):
         y = torch.clamp(y, min=-self._lim, max=self._lim)
