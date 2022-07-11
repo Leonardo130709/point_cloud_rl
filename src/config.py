@@ -36,7 +36,7 @@ class Config(BaseConfig):
     # algo
     discount: float = .99
     action_repeat: int = 2
-    frames_stack: int = 3 # vary this also apply more stack frames
+    frames_stack: int = 3
     init_temperature: float = .1
     target_ent_per_dim: float = -1.
 
@@ -47,7 +47,7 @@ class Config(BaseConfig):
 
     # PointNet
     pn_number: int = 200
-    pn_layers: tuple = (32, 64, 128, 256, 64)
+    pn_layers: tuple = (64, 128, 256, 64)
     downsample: int = 10
 
     #aux_losses
@@ -60,8 +60,8 @@ class Config(BaseConfig):
     ae_lr: float = 3e-4
     dual_lr: float = 3e-4
     weight_decay: float = 0.
-    critic_tau: float = .01
-    encoder_tau: float = .01
+    critic_tau: float = .005
+    encoder_tau: float = .005
     max_grad: float = 40.
 
     total_steps: int = 4*10**6
