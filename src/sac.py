@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from .config import Config
-from .agent import RSAC
+from .agent import SAC
 from . import wrappers, utils
 
 
@@ -19,7 +19,7 @@ class RLAlg:
         self.env = self.make_env(random=config.seed)
         self.task_path = pathlib.Path(config.logdir)
         self.callback = SummaryWriter(log_dir=self.task_path)
-        self.agent = RSAC(self.env, config, self.callback)
+        self.agent = SAC(self.env, config, self.callback)
         self.buffer = utils.ReplayBuffer(config.buffer_size)
         self.interactions_count = 0
 
@@ -39,7 +39,7 @@ class RLAlg:
                 observation=obs,
                 action=action,
                 reward=np.array(timestep.reward, dtype=np.float32)[np.newaxis],
-                done_flag=np.array(timestep.last(), dtype=bool)[np.newaxis],
+                done_flag=np.array(timestep.last(), dtype=np.float32)[np.newaxis],
                 next_observation=timestep.observation
             )
             self.buffer.add(transition)
@@ -48,6 +48,9 @@ class RLAlg:
                 obs = None
             else:
                 obs = timestep.observation
+
+            if len(self.buffer) < self.config.prefill:
+                continue
 
             dl = DataLoader(
                 self.buffer.sample(self.config.spi),
@@ -69,7 +72,7 @@ class RLAlg:
 
         dur = time.time() - dur
         self.callback.add_hparams(
-            vars(self.config),
+            {k: v for k, v in vars(self.config) if any(map(lambda t: isinstance(v, t), (int, float, bool)))},
             dict(duration=dur, score=np.mean(scores))
         )
 
@@ -117,7 +120,7 @@ class RLAlg:
             env,
             pn_number=self.config.pn_number,
             stride=self.config.downsample,
-            render_kwargs=dict(camera_id=0, height=84, width=84)
+            render_kwargs=dict(camera_id=0, height=240, width=320)
         )
         env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=self.config.discount)
         env = wrappers.FrameStack(env, self.config.frames_stack)

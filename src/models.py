@@ -28,7 +28,7 @@ class Actor(nn.Module):
         stddev = F.softplus(stddev) + 1e-4
         dist = td.transformed_distribution.TransformedDistribution(
             td.Normal(mean, stddev),
-            td.IndependentTransform(TruncatedTanhTransform(cache_size=1),
+            td.IndependentTransform(td.transforms.TanhTransform(cache_size=1),
                                     reinterpreted_batch_ndims=1,
                                     cache_size=1
                                     )

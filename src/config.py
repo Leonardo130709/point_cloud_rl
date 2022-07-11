@@ -36,7 +36,7 @@ class Config(BaseConfig):
     # algo
     discount: float = .99
     action_repeat: int = 2
-    frames_stack: int = 3
+    frames_stack: int = 3 # vary this also apply more stack frames
     init_temperature: float = .1
     target_ent_per_dim: float = -1.
 
@@ -46,9 +46,9 @@ class Config(BaseConfig):
     obs_emb_dim: int = 50
 
     # PointNet
-    pn_number: int = 100
-    pn_layers: tuple = (64, 128, 256)
-    downsample: int = 5
+    pn_number: int = 200
+    pn_layers: tuple = (32, 64, 128, 256, 64)
+    downsample: int = 10
 
     #aux_losses
     reconstruction_coef: float = 10.
@@ -58,7 +58,7 @@ class Config(BaseConfig):
     actor_lr: float = 3e-4
     critic_lr: float = 3e-4
     ae_lr: float = 3e-4
-    dual_lr: float = 1e-4
+    dual_lr: float = 3e-4
     weight_decay: float = 0.
     critic_tau: float = .01
     encoder_tau: float = .01
@@ -68,6 +68,7 @@ class Config(BaseConfig):
     spi: int = 128
     batch_size: int = 128
     eval_freq: int = 10000
+    prefill: int = 1000
     buffer_size: int = 10**6
 
     # task

@@ -80,7 +80,7 @@ class ReplayBuffer(Dataset):
         return self._size
 
     def sample(self, size):
-        idx = np.random.randint(self._size, size=min(size, 64*self._size))
+        idx = np.random.randint(self._size, size=size)
         return Subset(self._data, idx)
 
 

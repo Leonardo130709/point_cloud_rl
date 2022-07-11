@@ -8,7 +8,7 @@ nn = torch.nn
 F = nn.functional
 
 
-class RSAC(nn.Module):
+class SAC(nn.Module):
     def __init__(self, env, config, callback):
         super().__init__()
         self.observation_spec = env.observation_spec()
@@ -133,10 +133,7 @@ class RSAC(nn.Module):
             return torch.tensor(0.)
         elif self._c.aux_loss == 'reconstruction':
             obs_pred = self.decoder(states_emb)
-            if self._c.observe == 'point_cloud':
-                loss = chamfer_distance(obs.flatten(0, 2), obs_pred.flatten(0, 2))[0]
-            else:
-                loss = (obs_pred - obs).pow(2)
+            loss = chamfer_distance(obs.flatten(0, 2), obs_pred.flatten(0, 2))[0]
             return self._c.reconstruction_coef * loss.mean()
         else:
             raise NotImplementedError

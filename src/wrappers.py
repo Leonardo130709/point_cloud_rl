@@ -141,7 +141,7 @@ class PointCloudWrapper(Wrapper):
     def _to_fixed_number(self, pc):
         n = len(pc)
         if n == 0:
-            pc = np.zeros((1, 3))
+            pc = np.zeros((self.pn_number, 3))
         elif n <= self.pn_number:
             pc = np.pad(pc, ((0, self.pn_number - n), (0, 0)), mode='edge')
         else:
@@ -191,14 +191,14 @@ class PointCloudWrapperV2(Wrapper):
         y = (y - cy) * f_inv
 
         pc = np.stack((x, y, depth), axis=-1)
-        return pc.reshape(-1, 3)
+        return pc.reshape(-1, 3) # TODO: apply rotation matrix
         # rot_mat = self.env.physics.data.cam_xmat[self.render_kwargs['camera_id']].reshape(3, 3)
         # return np.einsum('ij, hwi->hwj', rot_mat, pc).reshape(-1, 3)
 
     def _to_fixed_number(self, pc):
         n = len(pc)
         if n == 0:
-            pc = np.zeros((1, 3))
+            pc = np.zeros((self.pn_number, 3))
         elif n <= self.pn_number:
             pc = np.pad(pc, ((0, self.pn_number - n), (0, 0)), mode='edge')
         else:
