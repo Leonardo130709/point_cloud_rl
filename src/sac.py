@@ -116,7 +116,7 @@ class RLAlg:
             stride=self.config.downsample,
             render_kwargs=dict(camera_id=0, height=240, width=320)
         )
-        env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=self.config.discount)
+        env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=1.)
         env = wrappers.FrameStack(env, self.config.frames_stack)
         return env
 
