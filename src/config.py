@@ -52,7 +52,7 @@ class Config(BaseConfig):
     downsample: int = 10
 
     #aux_losses
-    reconstruction_coef: float = 10.
+    reconstruction_coef: float = 100.
     constrastive_coef: float = 2.
 
     # train

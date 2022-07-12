@@ -22,7 +22,8 @@ scenarios = dict(
     bottleneck_pointnet='--pn_layers 64 128 256 64',
     with_features='--features_from_layers 0',
     tighter_actor='--actor_layers 200 200',
-    larger_critic='--critic_layers 512 256'
+    larger_critic='--critic_layers 512 256',
+    reconstruction='--aux_loss reconstruction',
 )
 
 

@@ -51,7 +51,7 @@ class SAC(nn.Module):
                                             next_log_probs,
                                             alpha)
 
-        auxiliary_loss = self._auxiliary_loss(observations, next_states) # TODO: update method
+        auxiliary_loss = self._auxiliary_loss(next_observations, next_states) # TODO: update method
 
         actor_loss, dual_loss = self._policy_improvement(next_states.detach(),
                                                          next_actions,
@@ -136,13 +136,13 @@ class SAC(nn.Module):
 
         return actor_loss.mean(), dual_loss.mean()
 
-    def _auxiliary_loss(self, obs, states_emb):
+    def _auxiliary_loss(self, obs, states):
         # todo check l2 reg; introduce lagrange multipliers
         if self._c.aux_loss == 'None':
             return torch.tensor(0.)
         elif self._c.aux_loss == 'reconstruction':
-            obs_pred = self.decoder(states_emb)
-            loss = chamfer_distance(obs.flatten(0, 2), obs_pred.flatten(0, 2))[0]
+            obs_pred = self.decoder(states)
+            loss = chamfer_distance(obs.flatten(0, -3), obs_pred.flatten(0, -3))[0]
             return self._c.reconstruction_coef * loss.mean()
         else:
             raise NotImplementedError
