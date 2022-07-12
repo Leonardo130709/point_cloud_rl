@@ -49,7 +49,7 @@ class Config(BaseConfig):
     pn_number: int = 200
     pn_layers: tuple = (64, 128, 256)
     features_from_layers: tuple = ()
-    downsample: int = 10
+    stride: int = -1
 
     #aux_losses
     reconstruction_coef: float = 100.
