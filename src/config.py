@@ -62,7 +62,7 @@ class Config(BaseConfig):
     weight_decay: float = 0.
     critic_tau: float = .005
     encoder_tau: float = .005
-    max_grad: float = 40.
+    max_grad: float = 50.
 
     total_steps: int = 4*10**6
     spi: int = 128
@@ -73,13 +73,12 @@ class Config(BaseConfig):
 
     # task
     seed: int = 0
-    task: str = 'walker_stand'
+    task: str = 'walker_walk'
     aux_loss: str = 'None'
     logdir: str = 'logdir/tmp'
     device: str = 'cuda'
-    observe: str = 'point_cloud'
     debug: bool = True
 
     def __post_init__(self):
         super().__post_init__()
-        assert self.spi >= self.batch_size
+        assert self.spi % self.batch_size == 0

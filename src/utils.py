@@ -84,14 +84,6 @@ class ReplayBuffer(Dataset):
         return Subset(self._data, idx)
 
 
-class TruncatedTanhTransform(td.transforms.TanhTransform):
-    _lim = .9999
-
-    def _inverse(self, y):
-        y = torch.clamp(y, min=-self._lim, max=self._lim)
-        return y.atanh()
-
-
 def soft_update(target, online, rho):
     for pt, po in zip(target.parameters(), online.parameters()):
         pt.data.copy_((1. - rho) * pt.data + rho * po.detach())

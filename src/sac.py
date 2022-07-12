@@ -110,12 +110,6 @@ class RLAlg:
 
     def make_env(self, **task_kwargs):
         env = utils.make_env(self.config.task, **task_kwargs)
-        # env = wrappers.PointCloudWrapper(
-        #     env,
-        #     pn_number=self.config.pn_number,
-        #     downsample=self.config.downsample,
-        #     render_kwargs=dict(camera_id=0, height=240, width=320)
-        # )
         env = wrappers.PointCloudWrapperV2(
             env,
             pn_number=self.config.pn_number,

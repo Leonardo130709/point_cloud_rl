@@ -32,19 +32,32 @@ class SAC(nn.Module):
 
     def step(self, observations, actions, rewards, dones, next_observations):
         states = self.encoder(observations)
-        next_states = self._target_encoder(next_observations)
+        next_states = self.encoder(observations)
+        target_next_states = self._target_encoder(next_observations)
 
         alpha = torch.maximum(self._log_alpha, torch.full_like(self._log_alpha, -18.))
         alpha = F.softplus(alpha) + 1e-8
 
-        critic_loss = self._policy_learning(
-            states, actions, rewards, dones, next_states, alpha
-        )
+        policy = self.actor(next_states.detach())
+        next_actions = policy.rsample()
+        next_log_probs = policy.log_prob(next_actions)
+
+        critic_loss = self._policy_learning(states,
+                                            actions,
+                                            rewards,
+                                            dones,
+                                            target_next_states,
+                                            next_actions,
+                                            next_log_probs,
+                                            alpha)
 
         auxiliary_loss = self._auxiliary_loss(observations, next_states) # TODO: update method
 
-        actor_loss, dual_loss = self._policy_improvement(
-            states.detach(), alpha)
+        actor_loss, dual_loss = self._policy_improvement(next_states.detach(),
+                                                         next_actions,
+                                                         next_log_probs,
+                                                         alpha)
+
         loss = critic_loss + auxiliary_loss + actor_loss + dual_loss
 
         self.optim.zero_grad()
@@ -74,21 +87,19 @@ class SAC(nn.Module):
             rewards,
             dones,
             next_states,
+            next_actions,
+            next_log_probs,
             alpha
     ):
         del dones  # not used for continuous control tasks
         with torch.no_grad():
-            policy = self.actor(next_states)
-            next_actions = policy.sample()
 
             q_values = self._target_critic(
                 next_states,
                 next_actions
             ).min(-1, keepdim=True).values
 
-            next_log_probs = policy.log_prob(next_actions).unsqueeze(-1)
-
-            soft_values = q_values - alpha * next_log_probs
+            soft_values = q_values - alpha * next_log_probs.unsqueeze(-1)
             target_q_values = rewards + self._c.discount*soft_values
 
         q_values = self.critic(states, actions)
@@ -104,12 +115,10 @@ class SAC(nn.Module):
     def _policy_improvement(
             self,
             states,
+            actions,
+            log_probs,
             alpha
     ):
-        policy = self.actor(states)
-        actions = policy.rsample()
-        log_probs = policy.log_prob(actions)
-
         self.critic.requires_grad_(False)
         q_values = self.critic(
             states,
