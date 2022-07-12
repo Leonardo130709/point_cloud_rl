@@ -20,11 +20,12 @@ scenarios = dict(
     increased_frames='--frames_stack 4',
     deeper_pointnet='--pn_layers 64 128 128 256',
     tighter_bottleneck='--pn_layers 64 128 128',
-    larget_bottleneck='--pn_layers 64 128 512',
+    larger_bottleneck='--pn_layers 64 128 512',
     with_features='--features_from_layers 0',
     thinner_actor='--actor_layers 200 200',
     wider_critic='--critic_layers 512 256',
     reconstruction='--aux_loss reconstruction',
+    keypoints='--aux_loss reconstruction --pn_layers 64 128 16 --features_from_layers 0'
 )
 
 
