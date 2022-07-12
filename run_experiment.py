@@ -6,7 +6,6 @@ import argparse
 import subprocess
 import pathlib
 from itertools import product
-from tqdm import tqdm
 
 
 def parse_args():
@@ -28,7 +27,7 @@ scenarios = dict(
 
 
 def make_dir(logdir, task, scenario):
-    task_dir = (logdir / task / scenario)
+    task_dir = logdir / task / scenario
     task_dir.mkdir(parents=True, exist_ok=False)
     return task_dir
 
