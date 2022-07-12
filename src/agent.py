@@ -19,8 +19,8 @@ class SAC(nn.Module):
         self._build()
 
     @torch.no_grad()
-    def policy(self, obs, training):
-        state = self.encoder(obs)
+    def policy(self, observation, training):
+        state = self.encoder(observation)
         dist = self.actor(state)
 
         if training:
@@ -164,7 +164,7 @@ class SAC(nn.Module):
             num_frames=frames_stack,
             out_features=emb,
             layers=self._c.pn_layers,
-            features_from_layers=()
+            features_from_layers=self._c.features_from_layers
         )
         self.decoder = models.PointCloudDecoder(
             emb,
