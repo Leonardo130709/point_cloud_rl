@@ -32,7 +32,7 @@ class SAC(nn.Module):
 
     def step(self, observations, actions, rewards, dones, next_observations):
         states = self.encoder(observations)
-        next_states = self.encoder(observations)
+        next_states = self.encoder(next_observations)
         target_next_states = self._target_encoder(next_observations)
 
         alpha = torch.maximum(self._log_alpha, torch.full_like(self._log_alpha, -18.))
