@@ -60,7 +60,7 @@ class Config(BaseConfig):
     actor_lr: float = 3e-4
     critic_lr: float = 3e-4
     ae_lr: float = 3e-4
-    dual_lr: float = 3e-4
+    dual_lr: float = 1e-4
     weight_decay: float = 0.
     critic_tau: float = .005
     encoder_tau: float = .005
