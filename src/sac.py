@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from .config import Config
 from .agent import SAC
 from . import wrappers, utils
-
+from .reacher import fixed_random
 
 class RLAlg:
     def __init__(self, config):
@@ -110,9 +110,12 @@ class RLAlg:
         return alg
 
     def make_env(self, task_kwargs=None, environment_kwargs=None):
-        env = utils.make_env(self.config.task,
-                             task_kwargs=task_kwargs,
-                             environment_kwargs=environment_kwargs)
+        # env = utils.make_env(self.config.task,
+        #                      task_kwargs=task_kwargs,
+        #                      environment_kwargs=environment_kwargs)
+        init_fn = lambda: (.1, .1)
+        random = task_kwargs.get('random') if task_kwargs else None
+        env = fixed_random(init_fn, random=random)
         env = wrappers.PointCloudWrapperV2(
             env,
             pn_number=self.config.pn_number,

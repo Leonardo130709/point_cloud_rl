@@ -39,6 +39,10 @@ class Wrapper(dm_env.Environment):
     def observation_spec(self) -> dm_env.specs.Array:
         return self.env.observation_spec()
 
+    @property
+    def physics(self):
+        return self.env.physics
+
 
 class ActionRepeat(Wrapper):
     """Repeat the same action multiple times."""
