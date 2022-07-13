@@ -163,8 +163,14 @@ class PointCloudWrapper(Wrapper):
         return dm_env.specs.Array(shape=(self.pn_number, 3), dtype=np.float32, name='point_cloud')
 
 
+#TODO: redo awful code
 class PointCloudWrapperV2(Wrapper):
-    def __init__(self, env, pn_number: int = 1000, render_kwargs=None, stride: int = -1):
+    def __init__(self,
+                 env,
+                 pn_number: int = 1000,
+                 render_kwargs=None,
+                 append_rgb=False,
+                 stride: int = -1):
         super().__init__(env)
         self.render_kwargs = render_kwargs or dict(camera_id=0, height=84, width=84)
         assert all(map(lambda k: k in self.render_kwargs, ('camera_id', 'height', 'width')))
@@ -173,6 +179,7 @@ class PointCloudWrapperV2(Wrapper):
 
         self.stride = stride
         self.pn_number = pn_number
+        self.append_rgb = append_rgb
         self._selected_geoms = np.array(self._segment_by_name(
             env.physics, ('ground', 'wall', 'floor'), **self.render_kwargs
         ))
@@ -181,6 +188,11 @@ class PointCloudWrapperV2(Wrapper):
         depth = self.env.physics.render(depth=True, **self.render_kwargs)
         pcd = self._point_cloud_from_depth(depth)
         mask = self._mask(pcd)
+
+        if self.append_rgb:
+            rgb = self._get_colours()
+            pcd = np.concatenate((pcd, rgb), axis=1)
+
         pcd = self._downsampling(pcd[mask])
         return self._to_fixed_number(pcd).astype(np.float32)
 
@@ -196,7 +208,7 @@ class PointCloudWrapperV2(Wrapper):
         # return np.einsum('ij, hwi->hwj', rot_mat, pc).reshape(-1, 3)
 
     def _to_fixed_number(self, pc):
-        n = len(pc)
+        n = pc.shape[0]
         if n == 0:
             pc = np.zeros((self.pn_number, 3))
         elif n <= self.pn_number:
@@ -220,7 +232,9 @@ class PointCloudWrapperV2(Wrapper):
         return np.logical_and(segmentation, truncate)
 
     def observation_spec(self):
-        return dm_env.specs.Array(shape=(self.pn_number, 3), dtype=np.float32, name='point_cloud')
+        return dm_env.specs.Array(shape=(self.pn_number, 3 + 3*self.append_rgb),
+                                  dtype=np.float32,
+                                  name='point_cloud' + '+rgb'*self.append_rgb)
 
     @staticmethod
     def _segment_by_name(physics, bad_geoms_names, **render_kwargs):
@@ -239,6 +253,12 @@ class PointCloudWrapperV2(Wrapper):
     def _downsampling(self, pcd):
         if self.stride < 0:
             adaptive_stride = pcd.shape[0] // self.pn_number
-            return pcd[::adaptive_stride]
+            return pcd[::max(adaptive_stride, 1)]
         else:
             return pcd[::self.stride]
+
+    def _get_colours(self):
+        rgb = self.env.physics.render(**self.render_kwargs).reshape(3, -1).astype(np.float32)
+        rgb /= 255.
+        return rgb.T
+

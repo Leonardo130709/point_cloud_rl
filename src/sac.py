@@ -72,7 +72,8 @@ class RLAlg:
 
         dur = time.time() - dur
         self.callback.add_hparams(
-            {k: v for k, v in vars(self.config) if any(map(lambda t: isinstance(v, t), (int, float, bool)))},
+            {k: v for k, v in vars(self.config).items()
+             if any(map(lambda t: isinstance(v, t), (int, float, bool)))},
             dict(duration=dur, score=np.mean(scores))
         )
 
@@ -114,7 +115,8 @@ class RLAlg:
             env,
             pn_number=self.config.pn_number,
             stride=self.config.stride,
-            render_kwargs=dict(camera_id=0, height=240, width=320)
+            render_kwargs=dict(camera_id=0, height=240, width=320),
+            append_rgb=self.config.append_rgb
         )
         env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=1.)
         env = wrappers.FrameStack(env, self.config.frames_stack)

@@ -50,6 +50,7 @@ class Config(BaseConfig):
     pn_layers: tuple = (64, 128, 256)
     features_from_layers: tuple = ()
     stride: int = -1
+    append_rgb: bool = False
 
     #aux_losses
     reconstruction_coef: float = 100.
@@ -78,7 +79,7 @@ class Config(BaseConfig):
     aux_loss: str = 'None'
     logdir: str = 'logdir/tmp'
     device: str = 'cuda'
-    debug: bool = True
+    debug: bool = False
 
     def __post_init__(self):
         super().__post_init__()
