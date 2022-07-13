@@ -59,7 +59,7 @@ class RLAlg:
 
             for transitions in dl:
                 observations, actions, rewards, dones, next_observations =\
-                    map(lambda t: t.to(self.agent.device), transitions)
+                    map(lambda t: self._to_device(t), transitions)
                 self.agent.step(observations, actions, rewards, dones, next_observations)
 
             if self.interactions_count % self.config.eval_freq == 0:
@@ -111,7 +111,7 @@ class RLAlg:
 
     def make_env(self, **task_kwargs):
         env = utils.make_env(self.config.task, **task_kwargs)
-        env = wrappers.PointCloudWrapperV2(
+        env = wrappers.CheetahWrapper(
             env,
             pn_number=self.config.pn_number,
             stride=self.config.stride,
@@ -123,6 +123,14 @@ class RLAlg:
         return env
 
     def policy(self, obs, training):
-        obs = torch.from_numpy(obs[None]).to(self.agent.device)
+        obs = {k: torch.from_numpy(v[None]).to(self.agent.device) for k, v in obs.items()}
+        # obs = torch.from_numpy(obs[None]).to(self.agent.device)
         action = self.agent.policy(obs, training)
         return action.detach().cpu().numpy().flatten()
+
+    def _to_device(self, obj):
+        if torch.is_tensor(obj):
+            return obj.to(self.agent.device)
+        else:
+            return {k: v.to(self.agent.device) for k,v in obj.items()}
+

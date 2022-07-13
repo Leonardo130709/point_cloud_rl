@@ -2,6 +2,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 from pytorch3d.loss import chamfer_distance
 from . import models, utils
+from contextlib import nullcontext
 
 td = torch.distributions
 nn = torch.nn
@@ -20,7 +21,7 @@ class SAC(nn.Module):
 
     @torch.no_grad()
     def policy(self, observation, training):
-        state = self.encoder(observation)
+        state = self._make_state(observation, self.encoder, stop_grads=True)
         dist = self.actor(state)
 
         if training:
@@ -31,9 +32,12 @@ class SAC(nn.Module):
         return action
 
     def step(self, observations, actions, rewards, dones, next_observations):
-        states = self.encoder(observations)
-        next_states = self.encoder(observations)
-        target_next_states = self._target_encoder(next_observations)
+        states = self._make_state(observations, self.encoder, stop_grads=False)
+        next_states = self._make_state(next_observations, self.encoder, stop_grads=False)
+        target_next_states = self._make_state(next_observations, self._target_encoder, stop_grads=True)
+        # states = self.encoder(observations)
+        # next_states = self.encoder(next_observations)
+        # target_next_states = self._target_encoder(next_observations)
 
         alpha = torch.maximum(self._log_alpha, torch.full_like(self._log_alpha, -18.))
         alpha = F.softplus(alpha) + 1e-8
@@ -152,13 +156,11 @@ class SAC(nn.Module):
         act_dim = self.action_spec.shape[0]
         self.device = torch.device(self._c.device if torch.cuda.is_available() else 'cpu')
 
-        # RL
-        self.actor = models.Actor(emb, act_dim, self._c.actor_layers)
-
-        self.critic = models.Critic(emb + act_dim, self._c.critic_layers)
-
         # Encoder+decoder
-        frames_stack, pn_number, in_channels = self.observation_spec.shape
+        pc_spec, velocity_spec = map(self.observation_spec.get, ('point_cloud', 'velocity'))
+        frames_stack, pn_number, in_channels = pc_spec.shape
+        _, velocity_dim = velocity_spec.shape
+
         self.encoder = models.PointCloudEncoder(
             in_channels,
             num_frames=frames_stack,
@@ -173,6 +175,11 @@ class SAC(nn.Module):
             num_frames=frames_stack,
             out_channels=in_channels
         )
+
+        # RL
+        self.actor = models.Actor(emb + velocity_dim*frames_stack, act_dim, self._c.actor_layers)
+
+        self.critic = models.Critic(emb + velocity_dim*frames_stack + act_dim, self._c.critic_layers)
 
         init_log_alpha = torch.log(torch.tensor(self._c.init_temperature).exp() - 1.)
         self._log_alpha = nn.Parameter(init_log_alpha)
@@ -206,3 +213,10 @@ class SAC(nn.Module):
     def _update_targets(self):
         utils.soft_update(self._target_encoder, self.encoder, self._c.encoder_tau)
         utils.soft_update(self._target_critic, self.critic, self._c.critic_tau)
+
+    def _make_state(self, observation, encoder, stop_grads=False):
+        ctx = torch.no_grad() if stop_grads else nullcontext()
+        with ctx:
+            point_cloud, velocity = map(observation.get, ('point_cloud', 'velocity'))
+            pcd_embedding = encoder(point_cloud)
+        return torch.cat((pcd_embedding, velocity.flatten(1)), -1)

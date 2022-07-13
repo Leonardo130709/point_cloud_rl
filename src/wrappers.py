@@ -1,5 +1,5 @@
 from typing import Any, Optional, Dict
-from collections import deque
+from collections import deque, OrderedDict
 
 import dm_env
 import numpy as np
@@ -75,14 +75,17 @@ class FrameStack(Wrapper):
             self._state = deque(self.fn * [timestep.observation], maxlen=self.fn)
         else:
             self._state.append(timestep.observation)
-        return np.stack(self._state)
+        state = OrderedDict()
+        for key in self._state[0].keys():
+            state[key] = np.stack(list(map(lambda obs: obs.get(key), self._state)))
+        return state
 
     def observation_spec(self):
-        spec = self.env.observation_spec()
-        return spec.replace(
-            shape=(self.fn, *spec.shape),
-            name=f'{self.fn}_stacked_{spec.name}'
-        )
+        new_spec = OrderedDict()
+        for name, spec in self.env.observation_spec().items():
+            new_spec[name] = spec.replace(shape=(self.fn, *spec.shape),
+                                          name=f'{self.fn}_stacked_{spec.name}')
+        return new_spec
 
 
 #TODO: redo and make understandable
@@ -261,4 +264,21 @@ class PointCloudWrapperV2(Wrapper):
         rgb = self.env.physics.render(**self.render_kwargs).reshape(3, -1).astype(np.float32)
         rgb /= 255.
         return rgb.T
+
+
+class CheetahWrapper(PointCloudWrapperV2):
+    def observation(self, timestep):
+        pcd = super().observation(timestep)
+        velocity = self.env.physics.velocity().astype(np.float32)
+        return OrderedDict(point_cloud=pcd, velocity=velocity)
+
+    def observation_spec(self):
+        pc_spec = super().observation_spec()
+        velocity_spec = dm_env.specs.Array(
+            shape=self.env.physics.velocity().shape,
+            dtype=np.float32,
+            name='velocity'
+        )
+        return OrderedDict(point_cloud=pc_spec, velocity=velocity_spec)
+
 
