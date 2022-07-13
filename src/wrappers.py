@@ -42,21 +42,18 @@ class Wrapper(dm_env.Environment):
 
 class ActionRepeat(Wrapper):
     """Repeat the same action multiple times."""
-    def __init__(self, env, frames_number: int, discount: float = 1.):
+    def __init__(self, env, frames_number: int):
         super().__init__(env)
         self.fn = frames_number
-        self.discount = discount
 
     def step(self, action):
         rew_sum = 0.
-        discount = 1.
         for _ in range(self.fn):
             timestep = self.env.step(action)
-            rew_sum += discount*timestep.reward
-            discount *= self.discount*(timestep.discount or 1.)
+            rew_sum += timestep.reward
             if timestep.last():
                 break
-        return timestep._replace(reward=rew_sum, discount=discount)
+        return timestep._replace(reward=rew_sum)
 
 
 class FrameStack(Wrapper):
