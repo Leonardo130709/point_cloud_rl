@@ -238,6 +238,8 @@ class PointCloudWrapperV2(Wrapper):
         geom_ids = physics.render(segmentation=True, **render_kwargs)[..., 0]
 
         def _predicate(geom_id):
+            if geom_id == -1:  # infinity
+                return False
             return all(
                 map(
                     lambda name: name not in physics.model.id2name(geom_id, 'geom'),
