@@ -16,7 +16,7 @@ class RLAlg:
     def __init__(self, config):
         utils.set_seed(config.seed)
         self.config = config
-        self.env = self.make_env(random=config.seed)
+        self.env = self.make_env(task_kwargs={'random': self.config.seed})
         self.task_path = pathlib.Path(config.logdir)
         self.callback = SummaryWriter(log_dir=self.task_path)
         self.agent = SAC(self.env, config, self.callback)
@@ -109,8 +109,10 @@ class RLAlg:
                 alg.buffer = pickle.load(b)
         return alg
 
-    def make_env(self, **task_kwargs):
-        env = utils.make_env(self.config.task, **task_kwargs)
+    def make_env(self, task_kwargs=None, environment_kwargs=None):
+        env = utils.make_env(self.config.task,
+                             task_kwargs=task_kwargs,
+                             environment_kwargs=environment_kwargs)
         env = wrappers.CheetahWrapper(
             env,
             pn_number=self.config.pn_number,
@@ -118,7 +120,7 @@ class RLAlg:
             render_kwargs=dict(camera_id=0, height=240, width=320),
             append_rgb=self.config.append_rgb
         )
-        env = wrappers.ActionRepeat(env, self.config.action_repeat, discount=1.)
+        env = wrappers.ActionRepeat(env, self.config.action_repeat)
         env = wrappers.FrameStack(env, self.config.frames_stack)
         return env
 

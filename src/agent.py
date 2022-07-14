@@ -157,9 +157,11 @@ class SAC(nn.Module):
         self.device = torch.device(self._c.device if torch.cuda.is_available() else 'cpu')
 
         # Encoder+decoder
-        pc_spec, velocity_spec = map(self.observation_spec.get, ('point_cloud', 'velocity'))
+        pc_spec, velocity_spec, speed_spec = map(self.observation_spec.get, ('point_cloud', 'velocity', 'speed'))
         frames_stack, pn_number, in_channels = pc_spec.shape
         _, velocity_dim = velocity_spec.shape
+        _, speed_dim = speed_spec.shape
+        assert speed_dim == 1
 
         self.encoder = models.PointCloudEncoder(
             in_channels,
@@ -177,9 +179,9 @@ class SAC(nn.Module):
         )
 
         # RL
-        self.actor = models.Actor(emb + velocity_dim*frames_stack, act_dim, self._c.actor_layers)
+        self.actor = models.Actor(emb + speed_dim*frames_stack, act_dim, self._c.actor_layers)
 
-        self.critic = models.Critic(emb + velocity_dim*frames_stack + act_dim, self._c.critic_layers)
+        self.critic = models.Critic(emb + speed_dim*frames_stack + act_dim, self._c.critic_layers)
 
         init_log_alpha = torch.log(torch.tensor(self._c.init_temperature).exp() - 1.)
         self._log_alpha = nn.Parameter(init_log_alpha)
@@ -217,6 +219,6 @@ class SAC(nn.Module):
     def _make_state(self, observation, encoder, stop_grads=False):
         ctx = torch.no_grad() if stop_grads else nullcontext()
         with ctx:
-            point_cloud, velocity = map(observation.get, ('point_cloud', 'velocity'))
+            point_cloud, velocity, speed = map(observation.get, ('point_cloud', 'velocity', 'speed'))
             pcd_embedding = encoder(point_cloud)
-        return torch.cat((pcd_embedding, velocity.flatten(1)), -1)
+        return torch.cat((pcd_embedding, speed.flatten(1)), -1)

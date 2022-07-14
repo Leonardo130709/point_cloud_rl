@@ -2,7 +2,7 @@ import copy
 import torch
 import random
 import numpy as np
-from typing import NamedTuple
+from typing import NamedTuple, Any
 from collections import deque
 from dm_control import suite
 from torch.utils.data import Dataset, Subset
@@ -26,12 +26,12 @@ def grads_sum(model):
     return np.sqrt(s)
 
 
-def make_env(name, **task_kwargs):
+def make_env(name, task_kwargs=None, environment_kwargs=None):
     domain, task = name.split('_', 1)
     if domain == 'ball':
         domain = 'ball_in_cup'
         task = 'catch'
-    return suite.load(domain, task, task_kwargs=task_kwargs)
+    return suite.load(domain, task, task_kwargs=task_kwargs, environment_kwargs=environment_kwargs)
 
 
 def set_seed(seed):
@@ -55,11 +55,11 @@ def evaluate(env, policy):
 
 
 class Transition(NamedTuple):
-    observation: np.ndarray
-    action: np.ndarray
-    reward: np.ndarray
-    done_flag: np.ndarray
-    next_observation: np.ndarray
+    observation: Any
+    action: Any
+    reward: Any
+    done_flag: Any
+    next_observation: Any
 
 
 class ReplayBuffer(Dataset):

@@ -42,21 +42,18 @@ class Wrapper(dm_env.Environment):
 
 class ActionRepeat(Wrapper):
     """Repeat the same action multiple times."""
-    def __init__(self, env, frames_number: int, discount: float = 1.):
+    def __init__(self, env, frames_number: int):
         super().__init__(env)
         self.fn = frames_number
-        self.discount = discount
 
     def step(self, action):
         rew_sum = 0.
-        discount = 1.
         for _ in range(self.fn):
             timestep = self.env.step(action)
-            rew_sum += discount*timestep.reward
-            discount *= self.discount*(timestep.discount or 1.)
+            rew_sum += timestep.reward
             if timestep.last():
                 break
-        return timestep._replace(reward=rew_sum, discount=discount)
+        return timestep._replace(reward=rew_sum)
 
 
 class FrameStack(Wrapper):
@@ -244,6 +241,8 @@ class PointCloudWrapperV2(Wrapper):
         geom_ids = physics.render(segmentation=True, **render_kwargs)[..., 0]
 
         def _predicate(geom_id):
+            if geom_id == -1:  # infinity
+                return False
             return all(
                 map(
                     lambda name: name not in physics.model.id2name(geom_id, 'geom'),
@@ -270,7 +269,8 @@ class CheetahWrapper(PointCloudWrapperV2):
     def observation(self, timestep):
         pcd = super().observation(timestep)
         velocity = self.env.physics.velocity().astype(np.float32)
-        return OrderedDict(point_cloud=pcd, velocity=velocity)
+        speed = np.array(self.env.physics.speed())[None].astype(np.float32)
+        return OrderedDict(point_cloud=pcd, velocity=velocity, speed=speed)
 
     def observation_spec(self):
         pc_spec = super().observation_spec()
@@ -279,6 +279,11 @@ class CheetahWrapper(PointCloudWrapperV2):
             dtype=np.float32,
             name='velocity'
         )
-        return OrderedDict(point_cloud=pc_spec, velocity=velocity_spec)
+        sped_spec = dm_env.specs.Array(
+            shape=(1,),
+            dtype=np.float32,
+            name='speed'
+        )
+        return OrderedDict(point_cloud=pc_spec, velocity=velocity_spec, speed=sped_spec)
 
 
