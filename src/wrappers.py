@@ -1,5 +1,5 @@
 from typing import Any, Optional, Dict
-from collections import deque
+from collections import deque, OrderedDict
 
 import dm_env
 import numpy as np
@@ -76,14 +76,17 @@ class FrameStack(Wrapper):
             self._state = deque(self.fn * [timestep.observation], maxlen=self.fn)
         else:
             self._state.append(timestep.observation)
-        return np.stack(self._state)
+        state = OrderedDict()
+        for key in self._state[0].keys():
+            state[key] = np.stack(list(map(lambda obs: obs.get(key), self._state)))
+        return state
 
     def observation_spec(self):
-        spec = self.env.observation_spec()
-        return spec.replace(
-            shape=(self.fn, *spec.shape),
-            name=f'{self.fn}_stacked_{spec.name}'
-        )
+        new_spec = OrderedDict()
+        for name, spec in self.env.observation_spec().items():
+            new_spec[name] = spec.replace(shape=(self.fn, *spec.shape),
+                                          name=f'{self.fn}_stacked_{spec.name}')
+        return new_spec
 
 
 #TODO: redo and make understandable
@@ -242,6 +245,8 @@ class PointCloudWrapperV2(Wrapper):
         geom_ids = physics.render(segmentation=True, **render_kwargs)[..., 0]
 
         def _predicate(geom_id):
+            if geom_id == -1:  # infinity
+                return False
             return all(
                 map(
                     lambda name: name not in physics.model.id2name(geom_id, 'geom'),
@@ -262,4 +267,21 @@ class PointCloudWrapperV2(Wrapper):
         rgb = self.env.physics.render(**self.render_kwargs).reshape(3, -1).astype(np.float32)
         rgb /= 255.
         return rgb.T
+
+
+class ReacherWrapper(PointCloudWrapperV2):
+    def observation(self, timestep):
+        pcd = super().observation(timestep)
+        distance = np.array(self.env.physics.finger_to_target_dist(), dtype=np.float32)[None]
+        return OrderedDict(point_cloud=pcd, distance=distance)
+
+    def observation_spec(self):
+        pcd_spec = super().observation_spec()
+        distance_spec = dm_env.specs.Array(
+            shape=(1,),
+            dtype=np.float32,
+            name='distance'
+        )
+        return OrderedDict(point_cloud=pcd_spec, distance=distance_spec)
+
 

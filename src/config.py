@@ -75,11 +75,11 @@ class Config(BaseConfig):
 
     # task
     seed: int = 0
-    task: str = 'walker_walk'
+    task: str = 'reacher_easy'
     aux_loss: str = 'None'
     logdir: str = 'logdir/tmp'
     device: str = 'cuda'
-    debug: bool = False
+    debug: bool = True
 
     def __post_init__(self):
         super().__post_init__()
