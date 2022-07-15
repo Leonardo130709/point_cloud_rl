@@ -218,5 +218,5 @@ class SAC(nn.Module):
         with ctx:
             point_cloud, distance = map(observation.get, ('point_cloud', 'distance'))
             pcd_embedding = encoder(point_cloud)
-            distance = torch.zeros_like(distance)  # TODO: remove to test if distance helps
+            # distance = torch.zeros_like(distance)  # TODO: remove to test if distance helps
         return torch.cat((pcd_embedding, distance.flatten(1)), -1)
